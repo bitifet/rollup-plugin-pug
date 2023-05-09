@@ -53,7 +53,13 @@ export default function pugPlugin (options: Partial<PugPluginOpts>): Plugin {
      * @param id
      */
     resolveId (id: string) {
-      return id === config._runtimeImport && config.pugRuntime || null
+      // Original code:
+      //   return id === config._runtimeImport && config.pugRuntime || null;
+      // Threw:
+      //   Type 'string | true' is not assignable to type 'string | false | void | PartialResolvedId | Promise<ResolveIdResult>'
+      // New code:
+      return id === config._runtimeImport && config.pugRuntime && id || null;
+      //   Does not throw, but not sure if this were the original intention.
     },
 
     transform (code: string, id: string) {

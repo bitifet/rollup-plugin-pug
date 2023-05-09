@@ -1,5 +1,10 @@
 import { resolve } from 'path'
 
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 type ParsedOptions = PugPluginOpts &  { _runtimeImport: string }
 
 export function parseOptions (options: Partial<PugPluginOpts>): ParsedOptions {
@@ -14,8 +19,10 @@ export function parseOptions (options: Partial<PugPluginOpts>): ParsedOptions {
     pugRuntime = ''
 
   } else if (typeof pugRuntime != 'string') {
-    runtimeImport = '\0pug-runtime'
+    runtimeImport = 'pug-runtime'
     pugRuntime = resolve(__dirname, 'runtime.es.js')
+
+    console.log(pugRuntime);
 
   } else {
     runtimeImport = pugRuntime

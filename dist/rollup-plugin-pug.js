@@ -3,13 +3,13 @@
  * @author aMarCruz'
  * @license MIT'
  */
-'use strict';
+import { compile, compileClientWithDependenciesTracked } from 'pug';
+import { dirname, resolve, extname } from 'path';
+import genPugSourceMap from 'gen-pug-source-map';
+import { fileURLToPath } from 'url';
+import { createFilter } from 'rollup-pluginutils';
 
-var path = require('path');
-var rollupPluginutils = require('rollup-pluginutils');
-var pug = require('pug');
-var genPugSourceMap = require('gen-pug-source-map');
-
+const __dirname = dirname(fileURLToPath(import.meta.url));
 function parseOptions(options) {
     options = options || {};
     // Get runtimeImport & pugRuntime values
@@ -20,8 +20,9 @@ function parseOptions(options) {
         pugRuntime = '';
     }
     else if (typeof pugRuntime != 'string') {
-        runtimeImport = '\0pug-runtime';
-        pugRuntime = path.resolve(__dirname, 'runtime.es.js');
+        runtimeImport = 'pug-runtime';
+        pugRuntime = resolve(__dirname, 'runtime.es.js');
+        console.log(pugRuntime);
     }
     else {
         runtimeImport = pugRuntime;
@@ -51,11 +52,22 @@ function parseOptions(options) {
     }
     let basedir = options.basedir;
     if (basedir) {
-        basedir = path.resolve(basedir);
+        basedir = resolve(basedir);
     }
     // Shallow copy of user options & defaults
-    return Object.assign({ doctype: 'html', compileDebug: false, staticPattern: /\.static\.(?:pug|jade)$/, inlineRuntimeFunctions: false, locals: {} }, options, { basedir,
-        globals, _runtimeImport: runtimeImport, pugRuntime, sourceMap: options.sourceMap !== false });
+    return {
+        doctype: 'html',
+        compileDebug: false,
+        staticPattern: /\.static\.(?:pug|jade)$/,
+        inlineRuntimeFunctions: false,
+        locals: {},
+        ...options,
+        basedir,
+        globals,
+        _runtimeImport: runtimeImport,
+        pugRuntime,
+        sourceMap: options.sourceMap !== false,
+    };
 }
 
 const RE_IMPORTS = /^([ \t]*-)[ \t]*(import[ \t*{'"].*)/gm;
@@ -132,7 +144,7 @@ function clonePugOpts(opts, filename) {
 const makeFilter = (opts, exts) => {
     opts = opts || {};
     // Create the rollup default filter
-    const filter = rollupPluginutils.createFilter(opts.include, opts.exclude);
+    const filter = createFilter(opts.include, opts.exclude);
     exts = opts.extensions || exts;
     if (!exts || exts === '*') {
         return filter;
@@ -142,7 +154,7 @@ const makeFilter = (opts, exts) => {
     }
     // Create the normalized extension list
     const extensions = exts.map((e) => (e[0] !== '.' ? `.${e}` : e));
-    return (id) => (filter(id) && extensions.indexOf(path.extname(id)) > -1);
+    return (id) => (filter(id) && extensions.indexOf(extname(id)) > -1);
 };
 
 /**
@@ -179,10 +191,10 @@ function pugPlugin(options) {
                 const basedir = opts.input;
                 // istanbul ignore else
                 if (basedir && typeof basedir == 'string') {
-                    config.basedir = path.dirname(path.resolve(basedir));
+                    config.basedir = dirname(resolve(basedir));
                 }
                 else {
-                    config.basedir = path.resolve('.');
+                    config.basedir = resolve('.');
                 }
             }
         },
@@ -191,7 +203,13 @@ function pugPlugin(options) {
          * @param id
          */
         resolveId(id) {
-            return id === config._runtimeImport && config.pugRuntime || null;
+            // Original code:
+            //   return id === config._runtimeImport && config.pugRuntime || null;
+            // Threw:
+            //   Type 'string | true' is not assignable to type 'string | false | void | PartialResolvedId | Promise<ResolveIdResult>'
+            // New code:
+            return id === config._runtimeImport && config.pugRuntime && id || null;
+            //   Does not throw, but not sure if this were the original intention.
         },
         transform(code, id) {
             if (!filter(id)) {
@@ -208,8 +226,8 @@ function pugPlugin(options) {
                   `import` so it will not have access to runtime variables or methods.
                   Instead, we use here the `local` variables and the compile-time options.
                 */
-                const staticOpts = Object.assign({}, config.locals, config, { filename: id });
-                fn = pug.compile(code, pugOpts);
+                const staticOpts = { ...config.locals, ...config, filename: id };
+                fn = compile(code, pugOpts);
                 body = fn(staticOpts);
                 body = `export default ${JSON.stringify(body)};\n`;
             }
@@ -227,7 +245,7 @@ function pugPlugin(options) {
                 // move the imports from the template to the top of the output queue
                 code = moveImports(code, imports);
                 // get function body and dependencies
-                fn = pug.compileClientWithDependenciesTracked(code, pugOpts);
+                fn = compileClientWithDependenciesTracked(code, pugOpts);
                 body = fn.body.replace('function template(', '\nexport default function(');
                 // put the pung-runtime import as the first of the queue, if neccesary
                 if (config._runtimeImport && /\bpug\./.test(body)) {
@@ -251,4 +269,4 @@ function pugPlugin(options) {
 }
 //#endregion
 
-module.exports = pugPlugin;
+export { pugPlugin as default };

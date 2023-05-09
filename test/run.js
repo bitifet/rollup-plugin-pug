@@ -1,46 +1,50 @@
 'use strict'
 
-const rollup = require('rollup').rollup
-const assert = require('assert')
-const _pug   = require('../')
+import { rollup } from 'rollup'
+import _pug from '../dist/rollup-plugin-pug.js'
+import { mkdirSync } from 'fs'
+
+import { dirname } from 'path'
+import { fileURLToPath } from 'url'
+const my__dirname = dirname(fileURLToPath(import.meta.url))
 
 const WRITE_BUNDLE = true
 
-process.chdir(__dirname)
+process.chdir(my__dirname)
 
 try {
-  require('fs').mkdirSync('./~tmp')
+  mkdirSync('./~tmp')
 } catch (err) {
   if (err.code !== 'EEXIST') {
     throw err
   }
 }
 
-function writeBundle (bundle, name) {
-  if (WRITE_BUNDLE && name) {
-    bundle.write({ format: 'cjs', file: `~tmp/${name}.js` })
-  }
-}
-
-
-function executeBundle (bundle, name) {
-  bundle.generate({
-    format: 'cjs',
-  }).then((result) => {
-    if (name) {
-      writeBundle(bundle, name)
-    }
-
-    // eslint-disable-next-line no-new-func
-    const fn = new Function('require', 'module', 'assert', result.code)
-    const module = {}
-
-    fn(require, module, assert)
-  })
-}
-
 
 describe('rollup-plugin-pug', function () {
+
+  function writeBundle (bundle, name) {
+    if (WRITE_BUNDLE && name) {
+      bundle.write({ format: 'es', file: `~tmp/${name}.js` })
+    }
+  }
+
+
+  function executeBundle (bundle, name) {
+    bundle.generate({
+      format: 'es',
+    }).then((result) => {
+      if (name) {
+        writeBundle(bundle, name)
+      }
+
+      // eslint-disable-next-line no-new-func
+      const fn = new Function('require', 'module', 'assert', result.code)
+      const module = {}
+
+      fn(require, module, assert)
+    })
+  }
 
   it('compiles pug templates to funcions', function (done) {
     rollup({
@@ -243,3 +247,4 @@ describe('rollup-plugin-pug', function () {
   })
 
 })
+

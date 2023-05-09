@@ -135,7 +135,7 @@ module.exports = {
     'yield-star-spacing': ON,
     'yoda': [ON, 'never'],
   },
-  overrides: {
+  overrides: [{
     files: ['test/*.js'],
     env: {
       mocha: YES,
@@ -143,5 +143,5 @@ module.exports = {
     rules: {
       'no-console': OFF,
     }
-  }
+  }]
 }

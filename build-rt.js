@@ -3,8 +3,18 @@
 
   2018-09-18:amc: using ES6
 */
-const path = require('path')
-const fs = require('fs')
+import path from 'path'
+import { fileURLToPath } from 'url';
+import fs from 'fs'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    // Borrowed from https://stackoverflow.com/a/62499498/4243912
+
+
+import { createRequire } from 'node:module'
+const require = createRequire(import.meta.url)
+
+
 
 const indent = '  '
 const prefix = 'export default (function(exports) {\n'

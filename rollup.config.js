@@ -1,7 +1,9 @@
 import typescript from 'rollup-plugin-typescript2'
-import pkgjson from './package.json'
+import {readFileSync} from "fs"
+const pkgjson = JSON.parse(readFileSync('./package.json'));
+//import pkgjson from './package.json' assert { type: "json" };
 
-const external = Object.keys(pkgjson.dependencies).concat(['fs', 'path'])
+const external = Object.keys(pkgjson.dependencies).concat(['fs'])
 const banner =
 `/**
  * rollup-plugin-pug v${pkgjson.version}
@@ -17,8 +19,8 @@ export default {
   external,
   output: {
     file: pkgjson.main,
-    format: 'cjs',
+    format: 'es',
     banner,
-    interop: false,
+    interop: "default",
   },
 }

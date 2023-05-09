@@ -41,7 +41,7 @@ export default (function(exports) {
     }
 
     return a;
-  };
+  }
 
   /**
    * Process array, object, or string as a string of classes delimited by a space.
@@ -62,7 +62,10 @@ export default (function(exports) {
    */
   exports.classes = pug_classes;
   function pug_classes_array(val, escaping) {
-    var classString = '', className, padding = '', escapeEnabled = Array.isArray(escaping);
+    var classString = '',
+      className,
+      padding = '',
+      escapeEnabled = Array.isArray(escaping);
     for (var i = 0; i < val.length; i++) {
       className = pug_classes(val[i]);
       if (!className) continue;
@@ -73,7 +76,8 @@ export default (function(exports) {
     return classString;
   }
   function pug_classes_object(val) {
-    var classString = '', padding = '';
+    var classString = '',
+      padding = '';
     for (var key in val) {
       if (key && val[key] && pug_has_own_property.call(val, key)) {
         classString = classString + padding + key;
@@ -114,7 +118,7 @@ export default (function(exports) {
     } else {
       return val + '';
     }
-  };
+  }
 
   /**
    * Render the given attribute.
@@ -127,24 +131,32 @@ export default (function(exports) {
    */
   exports.attr = pug_attr;
   function pug_attr(key, val, escaped, terse) {
-    if (val === false || val == null || !val && (key === 'class' || key === 'style')) {
+    if (
+      val === false ||
+      val == null ||
+      (!val && (key === 'class' || key === 'style'))
+    ) {
       return '';
     }
     if (val === true) {
       return ' ' + (terse ? key : key + '="' + key + '"');
     }
-    if (typeof val.toJSON === 'function') {
+    var type = typeof val;
+    if (
+      (type === 'object' || type === 'function') &&
+      typeof val.toJSON === 'function'
+    ) {
       val = val.toJSON();
     }
     if (typeof val !== 'string') {
       val = JSON.stringify(val);
       if (!escaped && val.indexOf('"') !== -1) {
-        return ' ' + key + '=\'' + val.replace(/'/g, '&#39;') + '\'';
+        return ' ' + key + "='" + val.replace(/'/g, '&#39;') + "'";
       }
     }
     if (escaped) val = pug_escape(val);
     return ' ' + key + '="' + val + '"';
-  };
+  }
 
   /**
    * Render the given attributes object.
@@ -154,7 +166,7 @@ export default (function(exports) {
    * @return {String}
    */
   exports.attrs = pug_attrs;
-  function pug_attrs(obj, terse){
+  function pug_attrs(obj, terse) {
     var attrs = '';
 
     for (var key in obj) {
@@ -174,7 +186,7 @@ export default (function(exports) {
     }
 
     return attrs;
-  };
+  }
 
   /**
    * Escape the given string of `html`.
@@ -186,7 +198,7 @@ export default (function(exports) {
 
   var pug_match_html = /["&<>]/;
   exports.escape = pug_escape;
-  function pug_escape(_html){
+  function pug_escape(_html) {
     var html = '' + _html;
     var regexResult = pug_match_html.exec(html);
     if (!regexResult) return _html;
@@ -195,11 +207,20 @@ export default (function(exports) {
     var i, lastIndex, escape;
     for (i = regexResult.index, lastIndex = 0; i < html.length; i++) {
       switch (html.charCodeAt(i)) {
-        case 34: escape = '&quot;'; break;
-        case 38: escape = '&amp;'; break;
-        case 60: escape = '&lt;'; break;
-        case 62: escape = '&gt;'; break;
-        default: continue;
+        case 34:
+          escape = '&quot;';
+          break;
+        case 38:
+          escape = '&amp;';
+          break;
+        case 60:
+          escape = '&lt;';
+          break;
+        case 62:
+          escape = '&gt;';
+          break;
+        default:
+          continue;
       }
       if (lastIndex !== i) result += html.substring(lastIndex, i);
       lastIndex = i + 1;
@@ -207,7 +228,7 @@ export default (function(exports) {
     }
     if (lastIndex !== i) return result + html.substring(lastIndex, i);
     else return result;
-  };
+  }
 
   /**
    * Re-throw the given `err` in context to the
@@ -221,37 +242,49 @@ export default (function(exports) {
    */
 
   exports.rethrow = pug_rethrow;
-  function pug_rethrow(err, filename, lineno, str){
+  function pug_rethrow(err, filename, lineno, str) {
     if (!(err instanceof Error)) throw err;
     if ((typeof window != 'undefined' || !filename) && !str) {
       err.message += ' on line ' + lineno;
       throw err;
     }
+    var context, lines, start, end;
     try {
-      str = str || require('fs').readFileSync(filename, 'utf8')
+      str = str || require('fs').readFileSync(filename, {encoding: 'utf8'});
+      context = 3;
+      lines = str.split('\n');
+      start = Math.max(lineno - context, 0);
+      end = Math.min(lines.length, lineno + context);
     } catch (ex) {
-      pug_rethrow(err, null, lineno)
+      err.message +=
+        ' - could not read from ' + filename + ' (' + ex.message + ')';
+      pug_rethrow(err, null, lineno);
+      return;
     }
-    var context = 3
-      , lines = str.split('\n')
-      , start = Math.max(lineno - context, 0)
-      , end = Math.min(lines.length, lineno + context);
 
     // Error context
-    var context = lines.slice(start, end).map(function(line, i){
-      var curr = i + start + 1;
-      return (curr == lineno ? '  > ' : '    ')
-        + curr
-        + '| '
-        + line;
-    }).join('\n');
+    context = lines
+      .slice(start, end)
+      .map(function(line, i) {
+        var curr = i + start + 1;
+        return (curr == lineno ? '  > ' : '    ') + curr + '| ' + line;
+      })
+      .join('\n');
 
     // Alter exception message
     err.path = filename;
-    err.message = (filename || 'Pug') + ':' + lineno
-      + '\n' + context + '\n\n' + err.message;
+    try {
+      err.message =
+        (filename || 'Pug') +
+        ':' +
+        lineno +
+        '\n' +
+        context +
+        '\n\n' +
+        err.message;
+    } catch (e) {}
     throw err;
-  };
+  }
 
   return exports
 })({});
